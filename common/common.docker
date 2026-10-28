@@ -1,0 +1,63 @@
+WORKDIR /usr/src
+
+ARG GIT_VERSION=2.48.1
+
+ARG CMAKE_VERSION=3.31.5
+
+ARG NINJA_VERSION=1.12.1
+ARG FLATCC_VERSION=0.6.1
+
+ARG LIQUIDPROMT_VERSION=v1.12.0
+
+ARG OPENSSL_VERSION=openssl-1.1.1w
+ARG OPENSSL_HASH=cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8
+
+ARG CURL_VERSION=curl-7.76.0
+ARG CURL_HASH=3b4378156ba09e224008e81dcce854b7ce4d182b1f9cfb97fe5ed9e9c18c6bd3
+
+ARG PERL_VERSION=perl-5.40.1
+ARG PERL_HASH=02f8c45bb379ed0c3de7514fad48c714fd46be8f0b536bfd5320050165a1ee26
+
+ENV RUSTUP_HOME=/opt/rustup
+ENV CARGO_HOME=/opt/rustup/cargo
+
+# Image build scripts
+COPY \
+  imagefiles/build-and-install-cmake.sh \
+  imagefiles/build-and-install-curl.sh \
+  imagefiles/build-and-install-flatcc.sh \
+  imagefiles/build-and-install-git.sh \
+  imagefiles/build-and-install-ninja.sh \
+  imagefiles/build-and-install-openssl.sh \
+  imagefiles/build-and-install-openssh.sh \
+  imagefiles/build-and-install-rustup.sh \
+  imagefiles/install-cmake-binary.sh \
+  imagefiles/install-liquidprompt-binary.sh \
+  imagefiles/install-python-packages.sh \
+  imagefiles/utils.sh \
+  /buildscripts/
+
+RUN \
+  X86_FLAG=$([ "$DEFAULT_DOCKCROSS_IMAGE" = "dockcross/manylinux2014-x86" ] && echo "-32" || echo "") && \
+  /buildscripts/build-and-install-openssl.sh $X86_FLAG && \
+  /buildscripts/build-and-install-openssh.sh && \
+  /buildscripts/build-and-install-curl.sh && \
+  /buildscripts/build-and-install-git.sh && \
+  /buildscripts/build-and-install-cmake.sh $X86_FLAG && \
+  /buildscripts/build-and-install-rustup.sh && \
+  /buildscripts/install-liquidprompt-binary.sh && \
+  PYTHON=$([ -e /opt/python/cp311-cp311/bin/python ] && echo "/opt/python/cp311-cp311/bin/python" || echo "python3") && \
+  /buildscripts/install-python-packages.sh -python ${PYTHON} && \
+  /buildscripts/build-and-install-ninja.sh -python ${PYTHON} && \
+  /buildscripts/build-and-install-flatcc.sh && \
+  rm -rf /buildscripts
+
+ENV PATH=/opt/rustup/cargo/bin:$PATH
+
+RUN echo "root:root" | chpasswd
+WORKDIR /work
+ENTRYPOINT ["/dockcross/entrypoint.sh"]
+
+# Runtime scripts
+COPY imagefiles/cmake.sh /usr/local/bin/cmake
+COPY imagefiles/ccmake.sh /usr/local/bin/ccmake

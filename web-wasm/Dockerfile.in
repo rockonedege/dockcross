@@ -1,5 +1,8 @@
-FROM emscripten/emsdk:2.0.22
-MAINTAINER Matt McCormick "matt.mccormick@kitware.com"
+ARG DOCKER_IMAGE_VERSION=5.0.1
+ARG HOST_ARCH_TAG
+FROM emscripten/emsdk:$DOCKER_IMAGE_VERSION$HOST_ARCH_TAG
+
+LABEL maintainer="Matt McCormick matt@mmmccormick.com"
 
 # Revert back to "/bin/sh" as default shell
 # See https://github.com/asRIA/emscripten-docker/blob/master/Dockerfile.in#L4
@@ -32,6 +35,7 @@ RUN \
     libtool \
     python3 \
     python3-pip \
+    osslsigncode \
     rsync \
     sed \
     ssh \
@@ -52,15 +56,17 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 
 #include "common.docker"
 
-ENV EMSCRIPTEN_VERSION 2.0.22
+#include "common.webassembly"
 
-ENV PATH /emsdk:/emsdk/upstream/bin/:/emsdk/upstream/emscripten:${PATH}
+ENV EMSCRIPTEN_VERSION=$DOCKER_IMAGE_VERSION
+
+ENV PATH=/emsdk:/emsdk/upstream/bin/:/emsdk/upstream/emscripten:${PATH}
 ENV CC=/emsdk/upstream/emscripten/emcc \
   CXX=/emsdk/upstream/emscripten/em++ \
   AR=/emsdk/upstream/emscripten/emar
 
 RUN chmod -R 777 /emsdk/upstream/emscripten/cache
 
-ENV CMAKE_TOOLCHAIN_FILE /emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
+ENV CMAKE_TOOLCHAIN_FILE=/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
 
 #include "common.label-and-env"

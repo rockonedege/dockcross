@@ -1,7 +1,12 @@
 bin
 dockcross
+dockcross-*
+build
+build-*
 */test/
 Dockerfile
 web-wasm/Dockerfile
 */imagefiles/*
 !imagefiles/*
+crosstool-ng/*
+llama.cpp/*

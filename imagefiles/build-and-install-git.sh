@@ -2,17 +2,19 @@
 
 set -ex
 
-if ! command -v curl &> /dev/null; then
-	echo >&2 'error: "curl" not found!'
-	exit 1
-fi
+# Get script directory
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+
+# Get build utilities
+source $SCRIPT_DIR/utils.sh
+
 
 if ! command -v tar &> /dev/null; then
 	echo >&2 'error: "tar" not found!'
 	exit 1
 fi
 
-if [[ "${GIT_VERSION}" == "" ]]; then
+if [[ -z "${GIT_VERSION}" ]]; then
   echo >&2 'error: GIT_VERSION env. variable must be set to a non-empty value'
   exit 1
 fi
@@ -23,22 +25,20 @@ ldconfig
 
 cd /usr/src
 
-url="https://mirrors.edge.kernel.org/pub/software/scm/git/git-${GIT_VERSION}.tar.gz"
-echo "Downloading $url"
-curl -# -LO $url
+GIT_ROOT="git-${GIT_VERSION}"
+GIT_DOWNLOAD_URL="https://mirrors.edge.kernel.org/pub/software/scm/git"
 
-tar xvzf git-${GIT_VERSION}.tar.gz  --no-same-owner
-rm -f git-${GIT_VERSION}.tar.gz
+fetch_source "${GIT_ROOT}.tar.gz" "${GIT_DOWNLOAD_URL}"
+tar xvzf "${GIT_ROOT}.tar.gz" --no-same-owner
 
-pushd git-${GIT_VERSION}
+pushd "${GIT_ROOT}"
 ./configure --prefix=/usr/local --with-curl
-make
-make install
+make -j"$(nproc)" NO_GETTEXT=YesPlease
+make NO_GETTEXT=YesPlease install
 popd
+rm -rf "${GIT_ROOT}" "${GIT_ROOT}.tar.gz"
 
 ldconfig
-
-rm -rf git-${GIT_VERSION}
 
 # turn the detached message off
 git config --global advice.detachedHead false

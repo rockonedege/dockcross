@@ -1,7 +1,9 @@
-FROM dockcross/base:latest
-MAINTAINER Matt McCormick "matt.mccormick@kitware.com"
+ARG ORG=dockcross
+FROM ${ORG}/base:latest
 
-ENV WINEARCH win32
+LABEL maintainer="Matt McCormick matt@mmmccormick.com"
+
+ENV WINEARCH=win32
 ARG MXE_TARGET_ARCH=i686
 ARG MXE_TARGET_THREAD=
 ARG MXE_TARGET_LINK=static

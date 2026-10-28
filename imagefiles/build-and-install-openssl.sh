@@ -39,27 +39,45 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-MY_DIR=$(dirname "${BASH_SOURCE[0]}")
-source $MY_DIR/utils.sh
+# Get script directory
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+
+# Get build utilities
+source $SCRIPT_DIR/utils.sh
 
 #
 # Function 'do_openssl_build' and 'build_openssl'
 # copied from https://github.com/pypa/manylinux/tree/master/docker/build_scripts
 #
 
-OPENSSL_ROOT=openssl-1.1.1k
-# Hash from https://www.openssl.org/source/openssl-1.1.1k.tar.gz.sha256
-OPENSSL_HASH=892a0875b9872acd04a9fde79b1f943075d5ea162415de3047c327df33fbaee5
+if [[ -z "${OPENSSL_VERSION}" ]]; then
+  echo >&2 'error: OPENSSL_VERSION env. variable must be set to a non-empty value'
+  exit 1
+fi
+
+if [[ -z "${OPENSSL_HASH}" ]]; then
+  echo >&2 'error: OPENSSL_HASH env. variable must be set to a non-empty value'
+  exit 1
+fi
+
+if [[ -z "${PERL_VERSION}" ]]; then
+  echo >&2 'error: PERL_VERSION env. variable must be set to a non-empty value'
+  exit 1
+fi
+
+if [[ -z "${PERL_HASH}" ]]; then
+  echo >&2 'error: PERL_HASH env. variable must be set to a non-empty value'
+  exit 1
+fi
+
+# Hash from https://www.openssl.org/source/openssl-1.1.1w.tar.gz.sha256
 OPENSSL_DOWNLOAD_URL=http://www.openssl.org/source/
 
-# a recent enough perl is needed to build openssl
-PERL_ROOT=perl-5.32.1
-PERL_HASH=03b693901cd8ae807231b1787798cf1f2e0b8a56218d07b7da44f784a7caeb2c
 PERL_DOWNLOAD_URL=https://www.cpan.org/src/5.0
 
 function do_perl_build {
     ${WRAPPER} sh Configure -des -Dprefix=/opt/perl > /dev/null
-    ${WRAPPER} make > /dev/null
+    ${WRAPPER} make -j"$(nproc)" > /dev/null
     ${WRAPPER} make install > /dev/null
 }
 
@@ -69,16 +87,17 @@ function build_perl {
     local perl_sha256=$2
     check_var ${perl_sha256}
     check_var ${PERL_DOWNLOAD_URL}
-    curl -fsSLO ${PERL_DOWNLOAD_URL}/${perl_fname}.tar.gz
+
+    fetch_source "${perl_fname}.tar.gz" "${PERL_DOWNLOAD_URL}"
     check_sha256sum ${perl_fname}.tar.gz ${perl_sha256}
-    tar -xzf ${perl_fname}.tar.gz
+    tar -xzf ${perl_fname}.tar.gz --no-same-owner
     (cd ${perl_fname} && do_perl_build)
     rm -rf ${perl_fname} ${perl_fname}.tar.gz
 }
 
 function do_openssl_build {
     ${WRAPPER} ./config no-shared -fPIC $CONFIG_FLAG --prefix=/usr/local/ssl --openssldir=/usr/local/ssl > /dev/null
-    ${WRAPPER} make > /dev/null
+    ${WRAPPER} make -j"$(nproc)" > /dev/null
     ${WRAPPER} make install_sw > /dev/null
 }
 
@@ -88,7 +107,8 @@ function build_openssl {
     local openssl_sha256=$2
     check_var ${openssl_sha256}
     check_var ${OPENSSL_DOWNLOAD_URL}
-    curl -fsSLO ${OPENSSL_DOWNLOAD_URL}/${openssl_fname}.tar.gz
+
+    fetch_source "${openssl_fname}.tar.gz" "${OPENSSL_DOWNLOAD_URL}"
     check_sha256sum ${openssl_fname}.tar.gz ${openssl_sha256}
     tar -xzf ${openssl_fname}.tar.gz
     (cd ${openssl_fname} && PATH=/opt/perl/bin:${PATH} do_openssl_build)
@@ -98,8 +118,8 @@ function build_openssl {
 }
 
 cd /usr/src
-build_perl $PERL_ROOT $PERL_HASH
-build_openssl $OPENSSL_ROOT $OPENSSL_HASH
+build_perl "${PERL_VERSION}" "${PERL_HASH}"
+build_openssl "${OPENSSL_VERSION}" "${OPENSSL_HASH}"
 
 # Delete PERL
 rm -rf /opt/perl

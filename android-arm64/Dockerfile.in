@@ -1,7 +1,8 @@
-FROM dockcross/base:latest
-MAINTAINER Matt McCormick "matt.mccormick@kitware.com"
+ARG ORG=dockcross
+FROM ${ORG}/base:latest
+MAINTAINER Matt McCormick "matt@mmmccormick.com"
 RUN \
-  sed -i '/debian-security/d' /etc/apt/sources.list && \
+  echo Enabled: no >> /etc/apt/sources.list.d/debian.sources && \
   dpkg --add-architecture arm64 && \
   apt-get update
 
@@ -13,24 +14,24 @@ RUN apt-get update && apt-get install -y \
 
 ENV CROSS_TRIPLE=aarch64-linux-android
 ENV CROSS_ROOT=/usr/${CROSS_TRIPLE}
-ENV AS=${CROSS_ROOT}/bin/${CROSS_TRIPLE}-as \
-    AR=${CROSS_ROOT}/bin/${CROSS_TRIPLE}-ar \
-    CC=${CROSS_ROOT}/bin/${CROSS_TRIPLE}-clang \
-    CPP=${CROSS_ROOT}/bin/${CROSS_TRIPLE}-cpp \
-    CXX=${CROSS_ROOT}/bin/${CROSS_TRIPLE}-clang++ \
-    LD=${CROSS_ROOT}/bin/${CROSS_TRIPLE}-ld \
-    FC=${CROSS_ROOT}/bin/${CROSS_TRIPLE}-gfortran
+ENV ANDROID_NDK=${CROSS_ROOT}
+ENV AS=${CROSS_ROOT}/bin/llvm-as \
+    AR=${CROSS_ROOT}/bin/llvm-ar \
+    CC=${CROSS_ROOT}/bin/clang \
+    CXX=${CROSS_ROOT}/bin/clang++ \
+    LD=${CROSS_ROOT}/bin/ld
 
-ENV ANDROID_NDK_REVISION 22b
-ENV ANDROID_NDK_API 22
+ENV ANDROID_NDK_REVISION=30
+ENV ANDROID_API=24
+
 RUN mkdir -p /build && \
     cd /build && \
-    curl -O https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip && \
-    unzip ./android-ndk-r${ANDROID_NDK_REVISION}-linux-x86_64.zip && \
+    curl -O https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_REVISION}-linux.zip && \
+    unzip ./android-ndk-r${ANDROID_NDK_REVISION}-linux.zip && \
     cd android-ndk-r${ANDROID_NDK_REVISION} && \
     ./build/tools/make_standalone_toolchain.py \
       --arch arm64 \
-      --api ${ANDROID_NDK_API} \
+      --api ${ANDROID_API} \
       --stl=libc++ \
       --install-dir=${CROSS_ROOT} && \
     cd / && \
@@ -38,8 +39,13 @@ RUN mkdir -p /build && \
     find ${CROSS_ROOT} -exec chmod a+r '{}' \; && \
     find ${CROSS_ROOT} -executable -exec chmod a+x '{}' \;
 
+# Prepare Rust
+ENV PATH="/root/.cargo/bin/:$PATH"
+RUN rustup target add aarch64-linux-android
+COPY config.toml /root/.cargo/
 
+# Prepare CMake
 COPY Toolchain.cmake ${CROSS_ROOT}/
-ENV CMAKE_TOOLCHAIN_FILE ${CROSS_ROOT}/Toolchain.cmake
+ENV CMAKE_TOOLCHAIN_FILE=${CROSS_ROOT}/Toolchain.cmake
 
 #include "common.label-and-env"

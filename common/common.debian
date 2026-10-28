@@ -1,0 +1,46 @@
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN \
+  apt-get update --yes && \
+  apt-get install --no-install-recommends --yes \
+    autogen \
+    automake \
+    bash \
+    bc \
+    bison \
+    build-essential \
+    bzip2 \
+    ca-certificates \
+    ccache \
+    curl \
+    dirmngr \
+    file \
+    flex \
+    gettext \
+    gzip \
+    gnupg \
+    osslsigncode \
+    initramfs-tools \
+    libncurses5 \
+    libtool \
+    make \
+    nasm \
+    ncurses-dev \
+    pkg-config \
+    pax \
+    python3-dev \
+    python3-pip \
+    rsync \
+    sed \
+    ssh \
+    tar \
+    vim \
+    wget \
+    xz-utils \
+    zip \
+    zlib1g-dev \
+    python-is-python3 \
+    && apt-get clean autoclean --yes \
+    && apt-get autoremove --yes \
+    && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
+    && rm /etc/ssh/*key*
